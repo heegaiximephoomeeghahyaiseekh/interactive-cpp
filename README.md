@@ -18,6 +18,9 @@ Once you have everything you need, enter the following at SBCL's `*` prompt:
 
 If everything works, you'll end up back in the shell, and there will be an executable called "icpp".
 
+You can also run ICPP from within SBCL. Instead of loading `build.lisp`, load `loader.lisp`, and then
+call `(icpp::cpp-repl)`. If you do this from within SLIME, you will not be able to see anything that your C++ code sends to `stdout` or `cout`, since these have nothing to do with Lisp's `*standard-output*`, which is connected to the SWANK socket.
+
 # Using it
 
 ICPP does not contain an actual C++ parser. As a result, you must supply additional information for it to know
