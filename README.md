@@ -109,3 +109,5 @@ ICPP takes snippets of C++ and compiles them into shared-object libraries, which
 If you're entering a statement for immediate execution, the statement is wrapped in a function, which is then immediately unloaded and deleted.
 
 If ICPP detects that you're redefining something, the original shared library is deleted, the new one is loaded, and all the libraries that depend on the old one are reloaded.
+
+Every generated C++ source file contains all the C preprocessor definitions you have defined with the `preproc` command, along with declarations for all types defined with `defclass`, `extern` declarations for all variables defined with `declare`, and prototypes for all functions and methods defined via `defun` and `defmethod`.
