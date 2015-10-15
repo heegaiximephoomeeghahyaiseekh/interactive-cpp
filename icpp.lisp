@@ -352,7 +352,7 @@ that are defined by the shared object that was read."
 		     (read-cpp-directive *standard-input*))
 		    ((icpp-user::load-source icpp-user::unload-source icpp-user::load-library)
 		     (read-line))
-		    ((icpp-user::defun icpp-user::defun icpp-user::help icpp-user::quit icpp-user::declarations
+		    ((icpp-user::defun icpp-user::defmethod icpp-user::help icpp-user::quit icpp-user::declarations
 		      icpp-user::delete)
 		     nil)
 		    (otherwise 
@@ -367,7 +367,7 @@ that are defined by the shared object that was read."
        (register-library c++-code))
       ((icpp-user::defun icpp-user::defmethod)
        (multiple-value-bind (function-def prototype) (naive-cpp-read *standard-input* :function-mode t)
-	 (cpp-defun (and (eq cmd 'cpp-user::defun) prototype) function-def)))
+	 (cpp-defun (and (eq cmd 'icpp-user::defun) prototype) function-def)))
       ((icpp-user::declarations)
        (print-declarations))
       ((icpp-user::delete)
