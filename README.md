@@ -23,7 +23,7 @@ call `(icpp::cpp-repl)`. If you do this from within SLIME, you will not be able 
 
 # Using it
 
-ICPP does not contain an actual C++ parser. As a result, you must supply additional information for it to know
+ICPP does not contain its own C++ parser. As a result, you must supply additional information for it to know
 what to do with your code. For example, the first thing you may want to do is `#include` some header files:
 
     > preproc #include <stdio.h>
