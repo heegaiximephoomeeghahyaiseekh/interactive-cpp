@@ -1,7 +1,7 @@
-# interactive-cpp
-A primitive C++ REPL.
+# interactive-cpp (ICPP)
+A primitive C++ REPL. I wrote this after failing to build [Cling](http://root.cern.ch/drupal/content/cling), due to not having enough memory to build it.
 
-To build it, you must be on Linux and have Steel Bank Common Lisp ([sbcl.org](http://sbcl.org), `apt-get install sbcl`). The program
+To build ICPP, you must be on Linux and have Steel Bank Common Lisp ([sbcl.org](http://sbcl.org), `apt-get install sbcl`). The program
 uses SBCL-specific features, so it won't work on other Common Lisp implementations without being ported first.
 
 Quicklisp is also required. Find it at [quicklisp.org](http://quicklisp.org/).
@@ -9,7 +9,7 @@ Quicklisp is also required. Find it at [quicklisp.org](http://quicklisp.org/).
 The "nm" command must be installed. On Debian, it's in the "binutils" package.
 
 GCC is also required, though you may be able to get it to work with Clang by changing the `*compiler*` and
-`*linker*` variables in icpp.lisp. You can also change the `*compiler*`, `*linker*`, and `*source-extention*` variables
+`*linker*` variables in icpp.lisp. You can also change the `*compiler*`, `*linker*`, and `*source-extension*` variables
 to turn it into a C REPL instead of C++.
 
 Once you have everything you need, enter the following at SBCL's `*` prompt:
