@@ -20,7 +20,7 @@ Default is -shared, the flag accepted by G++.")
 (defparameter *symbol-lookup* (make-hash-table) "Look up the library that defines a given C symbol")
 (defparameter *dependents* (make-hash-table) "Look up the libraries that depend on a given library.")
 (defparameter *loaded-libraries* nil)
-(defparameter *ignored-symbols* '(__bss_start _end _fini _init))
+(defparameter *ignored-symbols* '(__bss_start _end _fini _init) "Symbols other than those defined by us that are defined by shared-object libraries and should be ignored for dependency-analysis purposes.")
 (defparameter *loaded-source-files* nil)
 
 (defun tempname (extension)
