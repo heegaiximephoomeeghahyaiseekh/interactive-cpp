@@ -102,7 +102,7 @@ Default is -shared, the flag accepted by G++.")
   (with-input-from-string (in (do-command "nm" sofile))
     (loop for line = (read-line in nil nil)
 	 while line
-	 when (search-set '(" T " " U " " B ") line :test #'equalp)
+	 when (search-set '(" T " " U " " B ") line)
        collect (nreverse (read-from-string
 			  (concatenate 'string "(" line ")"))))))
 
