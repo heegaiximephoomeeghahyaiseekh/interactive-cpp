@@ -12,6 +12,7 @@
 (defparameter *linker* "g++" "Determines the program used to link executables. Default is g++")
 (defparameter *source-extension* ".cpp" "Determines the extension for source files.")
 (defparameter *binary-extension* #+(or win32 windows win64) ".dll" #-(or win32 windows win64) ".so")
+(defparameter *include-flag* (concatenate 'string "-I" (sb-posix:getcwd)))
 (defparameter *shared-flag* "-shared" "The flag used to tell the compiler/linker to produce a shared library.
 Default is -shared, the flag accepted by G++.")
 (defparameter *output-flag* "-o")
@@ -61,7 +62,7 @@ Default is -shared, the flag accepted by G++.")
 
 (defun compile-cpp-file (source-file binary-file)
   (multiple-value-bind (stdout stderr exit-code)
-	(do-command *compiler* *shared-flag* (namestring source-file) *output-flag* (namestring binary-file))
+	(do-command *compiler* *shared-flag* *include-flag* (namestring source-file) *output-flag* (namestring binary-file))
       (unless (= exit-code 0)
 	(error 'compiler-error
 	       :stdout stdout
@@ -215,14 +216,14 @@ that are defined by the shared object that was read."
 	  (with-output-to-temporary-file (out :template (format nil "TEMPORARY-FILES:%~a" *source-extension*))
 	    (write-directives out)
 	    (write-declarations out)
-	    (write-string declaration out)
-	    (if is-class
-		(push declaration *classes*)
-		(push declaration *declarations*))))
+	    (write-string declaration out)))
 	 (binary-file (tempname *binary-extension*)))
     (unwind-protect
 	 (compile-cpp-file source-file binary-file)
       (delete-file source-file))
+    (if is-class
+	(push declaration *classes*)
+	(push declaration *declarations*))
     (push (cons declaration (register-library binary-file)) *declaration-libs*)))
 
 (defun cpp-defun (prototype function-def)
