@@ -407,7 +407,7 @@ that are defined by the shared object that was read."
 			    (edit-string (slot-value exn 'stderr))))
 		(3 "Return to the REPL"
 		   ,(lambda ()
-			    (invoke-restart 'continue))))))
+			    (invoke-restart 'c++-repl))))))
     (loop do
 	 (loop for (num name lambda) in menu	    
 	    do (format t "  ~a. ~a~%" num name))
