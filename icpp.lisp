@@ -12,7 +12,6 @@
 (defparameter *linker* "g++" "Determines the program used to link executables. Default is g++")
 (defparameter *source-extension* ".cpp" "Determines the extension for source files.")
 (defparameter *binary-extension* #+(or win32 windows win64) ".dll" #-(or win32 windows win64) ".so")
-(defparameter *include-flag* (concatenate 'string "-I" (sb-posix:getcwd)))
 (defparameter *shared-flag* "-shared" "The flag used to tell the compiler/linker to produce a shared library.
 Default is -shared, the flag accepted by G++.")
 (defparameter *output-flag* "-o")
@@ -23,6 +22,9 @@ Default is -shared, the flag accepted by G++.")
 (defparameter *loaded-libraries* nil)
 (defparameter *ignored-symbols* '(__bss_start _end _fini _init) "Symbols other than those defined by us that are defined by shared-object libraries and should be ignored for dependency-analysis purposes.")
 (defparameter *loaded-source-files* nil)
+
+(defun include-flag ()
+  (concatenate 'string "-I" (sb-posix:getcwd)))
 
 (defun tempname (extension)
   (with-output-to-temporary-file (out :template (format nil "TEMPORARY-FILES:%~a" extension)) nil))
@@ -62,7 +64,9 @@ Default is -shared, the flag accepted by G++.")
 
 (defun compile-cpp-file (source-file binary-file)
   (multiple-value-bind (stdout stderr exit-code)
-	(do-command *compiler* *shared-flag* *include-flag* (namestring source-file) *output-flag* (namestring binary-file))
+	(apply #'do-command `(,*compiler*
+			    ,@(split-sequence:split-sequence " " (sb-posix:getenv "CFLAGS"))
+	  ,*shared-flag* ,(include-flag) ,(namestring source-file) ,*output-flag* ,(namestring binary-file)))
       (unless (= exit-code 0)
 	(error 'compiler-error
 	       :stdout stdout
