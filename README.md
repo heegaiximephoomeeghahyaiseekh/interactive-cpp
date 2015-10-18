@@ -1,6 +1,18 @@
 # interactive-cpp (ICPP)
 A primitive C++ REPL. I wrote this after failing to build [Cling](http://root.cern.ch/drupal/content/cling), due to not having enough memory to build it.
 
+# What it actually does
+
+ICPP takes snippets of C++ and compiles them into shared-object libraries, which it then loads. If you're defining a variable or function, this library stays loaded and provides that definition to code you type in later.
+
+If you're entering a statement for immediate execution, the statement is wrapped in a function, which is then immediately unloaded and deleted.
+
+If ICPP detects that you're redefining something, the original shared library is deleted, the new one is loaded, and all the libraries that depend on the old one are reloaded.
+
+Every generated C++ source file contains all the C preprocessor definitions you have defined with the `preproc` command, along with declarations for all types defined with `defclass`, `extern` declarations for all variables defined with `declare`, and prototypes for all functions and methods defined via `defun` and `defmethod`.
+
+# Building it.
+
 To build ICPP, you must be on Linux and have Steel Bank Common Lisp ([sbcl.org](http://sbcl.org), `apt-get install sbcl`). The program
 uses SBCL-specific features, so it won't work on other Common Lisp implementations without being ported first.
 
@@ -101,13 +113,3 @@ to capture SIGSEGV errors, but the program will be very unstable after a segfaul
 The compiler's output is captured and put in a text file. If the compiler fails, you will be offered a chance
 to view the compiler's stdout or stderr in the editor defined in your $EDITOR environment variable. GCC sends its errors
 to stdout.
-
-# What it actually does
-
-ICPP takes snippets of C++ and compiles them into shared-object libraries, which it then loads. If you're defining a variable or function, this library stays loaded and provides that definition to code you type in later.
-
-If you're entering a statement for immediate execution, the statement is wrapped in a function, which is then immediately unloaded and deleted.
-
-If ICPP detects that you're redefining something, the original shared library is deleted, the new one is loaded, and all the libraries that depend on the old one are reloaded.
-
-Every generated C++ source file contains all the C preprocessor definitions you have defined with the `preproc` command, along with declarations for all types defined with `defclass`, `extern` declarations for all variables defined with `declare`, and prototypes for all functions and methods defined via `defun` and `defmethod`.
