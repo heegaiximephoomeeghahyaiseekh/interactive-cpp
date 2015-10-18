@@ -82,6 +82,8 @@ Pre-written C++ source files can be loaded with the `load-source` command:
 
 That links your file as a shared library. You must `#include` its corresponding header file.
 
+As a side effect of the way GCC works, you can also use `load-source` to load `.o` files, and even `.so` files.
+
 To execute a statement immediately, use the `do` command:
 
     > preproc #include <iostream>
@@ -107,6 +109,8 @@ You can, for example, define `int x;` and a function that references it. Then yo
 If you call the function after that without also redefining it, I've found that the program freezes. Sending an
 interrupt signal brings up the Lisp debugger, from which you can go back to the C++ REPL. Lisp also attempts
 to capture SIGSEGV errors, but the program will be very unstable after a segfault.
+
+If you load a shared-object library with `load-source`, then start a Pthread that calls its code, and then unload the library with `unload-source`, this causes ICPP to crash. Send EOF <kbd>Ctrl</kbd><kbd>D</kbd> to exit the LDB debugger that will automatically be started.
 
 # Compiler errors.
 
