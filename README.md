@@ -112,11 +112,9 @@ You can, for example, define `int x;` and a function that references it:
 
 Then you can redefine `x` as a `double`. If you call the function after that without also redefining it (causing the obsolete `int` version of `x` to be referenced), I've found that the program freezes. Sending an interrupt signal brings up the Lisp debugger, from which you can go back to the C++ REPL. 
 
-If you load a shared-object library with `load-source`, then start a Pthread that calls its code, and then unload the library with `unload-source`, this causes ICPP to crash. Send EOF <kbd>Ctrl</kbd><kbd>D</kbd> to exit the LDB debugger that will automatically be started.
-
 ## Threads cannot be detected.
 
-If a thread is using the code or data in a library, reloading that library will crash ICPP.
+If a thread is using the code or data in a library, unloading or reloading that library will crash ICPP.
 
 # Compiler errors.
 
