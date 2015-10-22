@@ -114,7 +114,7 @@ Then you can redefine `x` as a `double`. If you call the function after that wit
 
 ## Threads cannot be detected.
 
-If a thread is using the code or data in a library, unloading or reloading that library will crash ICPP.
+If a thread is using the code or data in a library, unloading or reloading that library will crash ICPP. ICPP does not know what threads are running or which libraries they depend on.
 
 # Compiler errors.
 
