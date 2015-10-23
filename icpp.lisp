@@ -62,12 +62,15 @@ Default is -shared, the flag accepted by G++.")
   (write-string "}}" stream)
   (terpri stream))
 
+(defun split (delim seq)
+  (and seq (split-sequence:split-sequence delim seq)))
+
 (defun compile-cpp-file (source-file binary-file)
   (multiple-value-bind (stdout stderr exit-code)
 	(apply #'do-command `(,*compiler*
-			    ,@(split-sequence:split-sequence " " (sb-posix:getenv "CFLAGS"))
+			    ,@(remove "" (split #\Space (sb-posix:getenv "CFLAGS")) :test #'equalp)
 	  ,*shared-flag* ,(include-flag) ,(namestring source-file) ,*output-flag* ,(namestring binary-file)))
-      (unless (= exit-code 0)
+      (unless (eq exit-code 0)
 	(error 'compiler-error
 	       :stdout stdout
 	       :stderr stderr
@@ -103,13 +106,17 @@ Default is -shared, the flag accepted by G++.")
   (declare (type (or pathname string) sofile))
   (when (pathnamep sofile)
     (setf sofile (namestring sofile)))
-	   
   (with-input-from-string (in (do-command "nm" sofile))
     (loop for line = (read-line in nil nil)
 	 while line
 	 when (search-set '(" T " " U " " B ") line)
-       collect (nreverse (read-from-string
-			  (concatenate 'string "(" line ")"))))))
+       collect (nreverse
+		(handler-case
+		    (read-from-string			  
+		     (concatenate 'string "(" line ")"))
+		  (sb-kernel:reader-impossible-number-error ()
+		    (read-from-string
+		     (concatenate 'string "(#x" line ")"))))))))
 
 (defun get-defined-symbols (symbol-list)
   "Given a list of symbol data returned by READ-SYMBOLS, return those symbols
@@ -155,16 +162,18 @@ that are defined by the shared object that was read."
     (setf *loaded-libraries* (remove lib *loaded-libraries*))
     collateral-unloads))
 
-(defun swap-library (old-lib new-lib)
+(defun swap-library (old-lib new-lib &key no-delete)
   (declare (type foreign-library old-lib)
-	   (type (or string pathname new-lib)))
+	   (type (or string pathname) new-lib))
   (let ((pending-reloads (unregister-library old-lib)))
     (delete-file (foreign-library-pathname old-lib))
-    (register-library new-lib)
+    (register-library new-lib :no-delete no-delete)
     (loop for lib in pending-reloads do
+	 ;; FIXME: We can't tell if each LIB was originally loaded
+	 ;; with :NO-DELETE or not.
 	 (register-library lib))))
 
-(defun register-library (so-file)
+(defun register-library (so-file &key no-delete)
   (declare (type (or pathname string) so-file))
   (when (pathnamep so-file)
     (setf so-file (namestring so-file)))
@@ -175,18 +184,20 @@ that are defined by the shared object that was read."
     (when conflicts
       ;; Will trigger REGISTER-LIBRARY to be called recursively
       ;; with the one library removed.
-      (swap-library (car conflicts) so-file))
+      (swap-library (car conflicts) so-file :no-delete no-delete))
     (unless (find so-file *loaded-libraries* :key #'foreign-library-pathname :test #'equalp)
-      (let ((lib (load-foreign-library so-file)))
-	(push lib *loaded-libraries*)
+      (let ((lib
+	     (handler-case*
+	      (load-foreign-library so-file)
+	      (t (exn) :before-unwind (delete-file so-file)))))
+	(unless no-delete
+	  (push lib *loaded-libraries*))
 	(loop for symb in defined do
 	     (setf (gethash symb *symbol-lookup*) lib))
 	(loop for symb in needed do
 	     (setf (gethash
 		     (gethash symb *symbol-lookup*) *dependents*) lib))
-	lib))))
-    
-    
+	lib))))    
 
 (defun preprocess (directive)
   (push directive *compiler-directives*))
@@ -239,10 +250,10 @@ that are defined by the shared object that was read."
 	(binary-file (tempname *binary-extension*)))
     (unwind-protect
 	 (compile-cpp-file source-file binary-file)
-      (delete-file source-file))
+      (delete-file source-file))    
+    (push (cons prototype (register-library binary-file)) *function-libs*)
     (when prototype
-      (push prototype *prototypes*))
-    (push (cons prototype (register-library binary-file)) *function-libs*)))
+      (push prototype *prototypes*))))
 
 (defun read-cpp-string (stream)
   (with-output-to-string (out)
@@ -369,7 +380,7 @@ that are defined by the shared object that was read."
       ((icpp-user::unload-source)
        (unload-source-file c++-code))
       ((icpp-user::load-library)
-       (register-library c++-code))
+       (register-library c++-code :no-delete t))
       ((icpp-user::defun icpp-user::defmethod)
        (multiple-value-bind (function-def prototype) (naive-cpp-read *standard-input* :function-mode t)
 	 (cpp-defun (and (eq cmd 'icpp-user::defun) prototype) function-def)))
