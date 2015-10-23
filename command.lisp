@@ -38,7 +38,7 @@ or others. Does not attempt to figure out if we're the owner or in the group."
 
 (defun do-command (cmd &rest args)
   "Run a non-interactive command and capture STDOUT to a string."
-  (let* ((*cmd-background* nil)
+  (let* ((*cmd-background* t)
 	 (process (apply #'cmd (cons cmd args))))
     #+sbcl (values (suck-stream (sb-ext:process-output process))
 		   (suck-stream (sb-ext:process-error process))
