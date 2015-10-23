@@ -24,7 +24,9 @@ GCC is also required, though you may be able to get it to work with Clang by cha
 `*linker*` variables in icpp.lisp. You can also change the `*compiler*`, `*linker*`, and `*source-extension*` variables
 to turn it into a C REPL instead of C++. (You would also have to change the source file extension from ".cpp" to ".c" so that GCC treats it as C, and remove the `extern "C" {` block that gets added to throwaway programs).
 
-Once you have everything you need, enter the following at SBCL's `*` prompt:
+Once you have everything you need, run `make` (or `gmake` on BSD) to build it.
+
+Or you can build it manually by entering the following at SBCL's `*` prompt:
 
      (load "build.lisp")
 
