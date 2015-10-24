@@ -10,6 +10,11 @@
 (defparameter *classes* nil)
 (defparameter *compiler* "g++" "Determines the compiler to run. Default is g++.")
 (defparameter *linker* "g++" "Determines the program used to link executables. Default is g++")
+(defparameter *c-compiler* "gcc" "The C compiler.")
+(defparameter *c-linker* "gcc")
+(defparameter *c++-compiler* "g++")
+(defparameter *c++-linker* "g++")
+(defparameter *c-mode* nil)
 (defparameter *source-extension* ".cpp" "Determines the extension for source files.")
 (defparameter *binary-extension* #+(or win32 windows win64) ".dll" #-(or win32 windows win64) ".so")
 (defparameter *shared-flag* "-shared" "The flag used to tell the compiler/linker to produce a shared library.
@@ -32,6 +37,17 @@ Default is -shared, the flag accepted by G++.")
 (define-condition compiler-error (simple-error) ((stdout :initarg :stdout) (stderr :initarg :stderr) (exit-code :initarg :exit-code)))
 (define-condition user-error (simple-error) ())
 
+(defun toggle-c-mode ()
+  (setf *c-mode* (not *c-mode*))
+  (cond (*c-mode*
+	 (setf *compiler* *c-compiler*
+	       *linker* *c-linker*
+	       *source-extension* ".c"))
+	(t
+	 (setf *compiler* *c++-compiler*
+	       *linker* *c++-linker*
+	       *source-extension* ".cpp"))))
+
 (defun write-declarations (stream &key (extern t))
   (loop for decl in (reverse *classes*) do
        (write-string decl stream)
@@ -53,13 +69,16 @@ Default is -shared, the flag accepted by G++.")
 (defun write-throwaway-program (statement stream)
   (write-directives stream)
   (write-declarations stream)
-  (write-string "extern \"C\" {" stream)
-  (terpri stream)
+  (unless *c-mode*
+    (write-string "extern \"C\" {" stream)
+    (terpri stream))
   (write-string "void user_statement() {" stream)
   (terpri stream)
   (write-string statement stream)
   (terpri stream)
-  (write-string "}}" stream)
+  (write-string "}" stream)
+  (unless *c-mode*
+    (write-string "}" stream))
   (terpri stream))
 
 (defun split (delim seq)
@@ -189,7 +208,9 @@ that are defined by the shared object that was read."
       (let ((lib
 	     (handler-case*
 	      (load-foreign-library so-file)
-	      (t (exn) :before-unwind (delete-file so-file)))))
+	      (t (exn) :before-unwind
+		 (unless no-delete
+		   (delete-file so-file))))))
 	(unless no-delete
 	  (push lib *loaded-libraries*))
 	(loop for symb in defined do
@@ -319,6 +340,7 @@ that are defined by the shared object that was read."
     (load-source "<filename>" "Compile a source file and load it in.")
     (unload-source "<filename>" "Unload a previously loaded source file.")
     (load-library "<filename>" "Link to a shared-object library.")
+    (c-mode "" "Toggle between C and C++ (default is C++)")
     (defclass "<class-definition>;"
 	"Add a class or struct definition, or for things like `using namespace std'" "defclass class my_class { public: int x; };")
     (do "<statement>;" "Execute a statement.")
@@ -369,7 +391,7 @@ that are defined by the shared object that was read."
 		    ((icpp-user::load-source icpp-user::unload-source icpp-user::load-library)
 		     (read-line))
 		    ((icpp-user::defun icpp-user::defmethod icpp-user::help icpp-user::quit icpp-user::declarations
-		      icpp-user::delete)
+		      icpp-user::delete icpp-user::c-mode)
 		     nil)
 		    (otherwise 
 		     (naive-cpp-read *standard-input*)))))
@@ -396,6 +418,9 @@ that are defined by the shared object that was read."
        (cpp-declare c++-code))
       ((icpp-user::do)
        (cpp-execute c++-code))
+      ((icpp-user::c-mode)
+       (toggle-c-mode)
+       (format t "C mode is ~a~%" (if *c-mode* "ON" "OFF")))
       ((icpp-user::help)
        (loop for (symbol parameters description example) in *repl-help*
 	    do (format t "~12a~25@a~%    ~a~%~%" symbol parameters description)
