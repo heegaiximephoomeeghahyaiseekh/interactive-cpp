@@ -1,6 +1,6 @@
 (defpackage #:icpp-user)
 (defpackage #:icpp
-  (:use #:common-lisp #:cffi #:temporary-file #:command #:better-handler-case))
+  (:use #:common-lisp #:cffi #:temporary-file #:command #:better-handler-case #:alexandria))
 
 (in-package #:icpp)
 
@@ -227,7 +227,7 @@ that are defined by the shared object that was read."
     (loop for k being the hash-keys in *symbol-lookup*
 	 when (eq (gethash k *symbol-lookup*) lib)
 	 do (remhash k *symbol-lookup*))
-    (setf *loaded-libraries* (remove lib *loaded-libraries*))
+    (setf *loaded-libraries* (remove lib *loaded-libraries* :key #'car))
     collateral-unloads))
 
 (defun swap-library (old-lib new-lib &key no-delete)
@@ -253,7 +253,7 @@ that are defined by the shared object that was read."
       ;; Will trigger REGISTER-LIBRARY to be called recursively
       ;; with the one library removed.
       (swap-library (car conflicts) so-file :no-delete no-delete))
-    (unless (find so-file *loaded-libraries* :key #'foreign-library-pathname :test #'equalp)
+    (unless (find so-file *loaded-libraries* :key (compose #'foreign-library-pathname #'car) :test #'equalp)
       (let ((lib
 	     (handler-case*
 	      (load-foreign-library so-file)
@@ -261,7 +261,7 @@ that are defined by the shared object that was read."
 		 (unless no-delete
 		   (delete-file so-file))))))
 	(unless no-delete
-	  (push lib *loaded-libraries*))
+	  (push (list lib no-delete) *loaded-libraries*))
 	(loop for symb in defined do
 	     (setf (gethash symb *symbol-lookup*) lib))
 	(loop for symb in needed do
@@ -527,12 +527,13 @@ that are defined by the shared object that was read."
 		 (c++-repl () :report "Return to the C++ REPL"
 			   nil))))
      (progn
-       (loop for lib in *loaded-libraries*
+       (loop for (lib no-delete) in *loaded-libraries*
 	  do (close-foreign-library lib)
-	    (handler-case 
-		(delete-file (foreign-library-pathname lib))
-	      (t ()
-		nil)))))
+	    (unless no-delete
+	      (handler-case 
+		  (delete-file (foreign-library-pathname lib))
+		(t ()
+		  nil))))))
    (style-warning (exn)
        :before-unwind (invoke-restart 'muffle-warning))
    (compiler-error (exn)
