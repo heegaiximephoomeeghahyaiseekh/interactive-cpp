@@ -66,7 +66,50 @@ Default is -shared, the flag accepted by G++.")
        (write-string directive stream)
        (terpri stream)))
 
-(defun write-throwaway-program (statement stream)
+(defparameter *timer-function*
+  "#include <sys/time.h>
+#include <time.h>
+#include <errno.h>
+#include <stdio.h>
+unsigned long long microtime() {
+   struct timeval tv;
+   unsigned long long retval;
+   errno=0;
+   if(gettimeofday(&tv, 0) == -1) {
+     return 0;
+   }
+   retval = tv.tv_sec*1000000;
+   retval += tv.tv_usec;
+   return retval;
+}
+
+")
+
+(defun write-timer-program (statement stream &optional eval)
+  (declare (ignore eval))
+  (write-string *timer-function* stream)
+  (terpri stream)
+  (write-throwaway-program
+   (concatenate 'string
+    "unsigned long long _icpp_wall_time_start = microtime();
+clock_t _icpp_cpu_time_start = clock();
+  unsigned long long _icpp_wall_time_end;
+  clock_t _icpp_cpu_time_end;
+
+" statement "
+
+  _icpp_cpu_time_end = clock();
+  _icpp_wall_time_end = microtime();
+  printf(\"CPU Time: %f sec\\n\", (double)(_icpp_cpu_time_end - _icpp_cpu_time_start)/CLOCKS_PER_SEC);
+  printf(\"Elapsed time: %f sec\\n\", (double)(_icpp_wall_time_end - _icpp_wall_time_start)/1000000.0);
+") stream))
+
+
+(defun write-throwaway-program (statement stream &optional eval)
+  (if eval
+      (if *c-mode*
+	  (error "EVAL not available in C mode.")
+	  (format stream "#include <iostream>~%")))
   (write-directives stream)
   (write-declarations stream)
   (unless *c-mode*
@@ -74,7 +117,13 @@ Default is -shared, the flag accepted by G++.")
     (terpri stream))
   (write-string "void user_statement() {" stream)
   (terpri stream)
-  (write-string statement stream)
+  (cond (eval
+	 (write-string "std::cout << " stream)
+	 (write-string statement stream)
+	 (terpri)
+	 (write-string "std::cout << std::endl;" stream))
+	(t
+	 (write-string statement stream)))
   (terpri stream)
   (write-string "}" stream)
   (unless *c-mode*
@@ -185,7 +234,7 @@ that are defined by the shared object that was read."
   (declare (type foreign-library old-lib)
 	   (type (or string pathname) new-lib))
   (let ((pending-reloads (unregister-library old-lib)))
-    (delete-file (foreign-library-pathname old-lib))
+    (ignore-errors (delete-file (foreign-library-pathname old-lib)))
     (register-library new-lib :no-delete no-delete)
     (loop for lib in pending-reloads do
 	 ;; FIXME: We can't tell if each LIB was originally loaded
@@ -232,11 +281,11 @@ that are defined by the shared object that was read."
 	   ((#\") (write-string (read-cpp-string stream) out))
 	   ((#\Newline) (return))))))
 
-(defun cpp-execute (statement)  
+(defun cpp-execute (statement &key eval (write-program 'write-throwaway-program))
   "Executes a throwaway C++ statement, which gets wrapped in a function. The statement is assumed to run in void context."
   (let* ((source-file
 	  (with-output-to-temporary-file (out :template (format nil "TEMPORARY-FILES:%~a" *source-extension*))
-	    (write-throwaway-program statement out)))
+	    (funcall write-program statement out eval)))
 	 (binary-file (tempname *binary-extension*)))
     (compile-cpp-file source-file binary-file)
     (let ((lib (load-foreign-library binary-file)))
@@ -290,11 +339,13 @@ that are defined by the shared object that was read."
 
 (defun naive-cpp-read (stream &key function-mode)
   "Reads a C++ statement, attempting to figure out where it ends. Returns the whole thing."
+  (declare (optimize (debug 3)))
   (let ((paren-level 0)
 	(brace-level 0)
 	(seen-brace nil)
 	(prototype nil)
 	(seen-chars nil))
+    (declare (optimize (debug 3)))
     (values
      (with-output-to-string (out)
       (loop for ch = (read-char stream)
@@ -344,6 +395,8 @@ that are defined by the shared object that was read."
     (defclass "<class-definition>;"
 	"Add a class or struct definition, or for things like `using namespace std'" "defclass class my_class { public: int x; };")
     (do "<statement>;" "Execute a statement.")
+    (time "<statement>;" "Measure the execution time of a statement.")
+    (eval "<expression>;" "Evaluate an expression (C++ only). Note: The semicolon is required.")
     (quit "" "Quit ICPP.")))
 
 (defun print-declarations (&key numbered)
@@ -418,6 +471,10 @@ that are defined by the shared object that was read."
        (cpp-declare c++-code))
       ((icpp-user::do)
        (cpp-execute c++-code))
+      ((icpp-user::eval)
+       (cpp-execute c++-code :eval t))
+      ((icpp-user::time)
+       (cpp-execute c++-code :write-program 'write-timer-program))
       ((icpp-user::c-mode)
        (toggle-c-mode)
        (format t "C mode is ~a~%" (if *c-mode* "ON" "OFF")))
