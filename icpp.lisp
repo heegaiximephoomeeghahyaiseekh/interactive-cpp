@@ -517,15 +517,18 @@ that are defined by the shared object that was read."
   (format t "ICPP Version 0.5~%Type 'HELP' for a list of commands.~%Most commands must end with a semicolon.~%~%")
   (handler-case*
    (unwind-protect
-	(catch 'exit
-	  (loop do
-	       (restart-case
-		   (progn
-		     (format t ">")
-		     (finish-output)
-		     (read-cmd))
-		 (c++-repl () :report "Return to the C++ REPL"
-			   nil))))
+	(handler-case
+	    (catch 'exit
+	      (loop do
+		   (restart-case
+		       (progn
+			 (format t ">")
+			 (finish-output)
+			 (read-cmd))
+		     (c++-repl () :report "Return to the C++ REPL"
+			       nil))))
+	  (end-of-file ()
+	    nil))
      (progn
        (loop for (lib no-delete) in *loaded-libraries*
 	  do (close-foreign-library lib)
